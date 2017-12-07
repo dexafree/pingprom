@@ -1,0 +1,49 @@
+version: '3.1'
+
+volumes:
+    prometheus_data: {}
+    grafana_data: {}
+
+networks:
+    pingprom_internal:
+
+services:
+    prometheus:
+        image: prom/prometheus:latest
+        volumes:
+            - prometheus_data:/prometheus
+            - ./prometheus:/pingprom/
+        networks:
+            - pingprom_internal
+        container_name: prometheus
+        ports:
+            - 9090:9090
+        restart: always
+        depends_on:
+            - blackbox
+        command:
+            - '--config.file=/pingprom/prometheus.yml'
+
+    grafana:
+        image: grafana/grafana:latest
+        depends_on:
+          - prometheus
+        ports:
+          - 3000:3000
+        volumes:
+            - grafana_data:/var/lib/grafana
+        networks:
+          - pingprom_internal
+
+    blackbox:
+        image: prom/blackbox-exporter:latest
+        container_name: blackboxprober
+        ports:
+            - 9115:9115
+        networks:
+            - pingprom_internal
+        privileged: true
+        volumes:
+            - ./blackbox.yml:/config/blackbox.yml
+        command:
+            - '--config.file=/config/blackbox.yml'
